@@ -1,0 +1,3 @@
+[submodule "onnx-facial-lmk-detector"]
+	path = onnx-facial-lmk-detector
+	url = https://github.com/atksh/onnx-facial-lmk-detector
