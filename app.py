@@ -68,8 +68,6 @@ def run(image: np.ndarray, sess: ort.InferenceSession) -> np.ndarray:
 
 
 def main():
-    gr.close_all()
-
     args = parse_args()
 
     options = ort.SessionOptions()
