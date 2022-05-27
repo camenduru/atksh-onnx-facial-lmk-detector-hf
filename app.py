@@ -16,7 +16,7 @@ import onnxruntime as ort
 
 TITLE = 'atksh/onnx-facial-lmk-detector'
 DESCRIPTION = 'This is a demo for https://github.com/atksh/onnx-facial-lmk-detector.'
-ARTICLE = None
+ARTICLE = '<center><img src="https://visitor-badge.glitch.me/badge?page_id=hysts.atksh-onnx-facial-lmk-detector" alt="visitor badge"/></center>'
 
 TOKEN = os.environ['TOKEN']
 
