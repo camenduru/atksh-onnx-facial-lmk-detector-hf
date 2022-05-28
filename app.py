@@ -88,8 +88,7 @@ def main():
         gr.inputs.Image(type='numpy', label='Input'),
         [
             gr.outputs.Image(type='numpy', label='Output'),
-            gr.outputs.Carousel(gr.outputs.Image(type='numpy'),
-                                label='Aligned Faces'),
+            gr.Gallery(type='numpy', label='Aligned Faces'),
         ],
         examples=examples,
         title=TITLE,
