@@ -80,7 +80,7 @@ def main():
     func = functools.update_wrapper(func, run)
 
     image_paths = load_sample_images()
-    examples = ['onnx-facial-lmk-detector/input.jpg'
+    examples = [['onnx-facial-lmk-detector/input.jpg']
                 ] + [[path.as_posix()] for path in image_paths]
 
     gr.Interface(
