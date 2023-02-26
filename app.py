@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import functools
 import os
 import pathlib
@@ -16,22 +15,8 @@ import onnxruntime as ort
 
 TITLE = 'atksh/onnx-facial-lmk-detector'
 DESCRIPTION = 'This is an unofficial demo for https://github.com/atksh/onnx-facial-lmk-detector.'
-ARTICLE = '<center><img src="https://visitor-badge.glitch.me/badge?page_id=hysts.atksh-onnx-facial-lmk-detector" alt="visitor badge"/></center>'
 
-TOKEN = os.environ['TOKEN']
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--theme', type=str)
-    parser.add_argument('--live', action='store_true')
-    parser.add_argument('--share', action='store_true')
-    parser.add_argument('--port', type=int)
-    parser.add_argument('--disable-queue',
-                        dest='enable_queue',
-                        action='store_false')
-    parser.add_argument('--allow-flagging', type=str, default='never')
-    return parser.parse_args()
+HF_TOKEN = os.getenv('HF_TOKEN')
 
 
 def load_sample_images() -> list[pathlib.Path]:
@@ -44,7 +29,7 @@ def load_sample_images() -> list[pathlib.Path]:
             path = huggingface_hub.hf_hub_download(dataset_repo,
                                                    name,
                                                    repo_type='dataset',
-                                                   use_auth_token=TOKEN)
+                                                   use_auth_token=HF_TOKEN)
             with tarfile.open(path) as f:
                 f.extractall(image_dir.as_posix())
     return sorted(image_dir.rglob('*.jpg'))
@@ -66,43 +51,27 @@ def run(image: np.ndarray, sess: ort.InferenceSession) -> np.ndarray:
     return res[:, :, ::-1], [face[:, :, ::-1] for face in aligned_images]
 
 
-def main():
-    args = parse_args()
+options = ort.SessionOptions()
+options.intra_op_num_threads = 8
+options.inter_op_num_threads = 8
+sess = ort.InferenceSession('onnx-facial-lmk-detector/model.onnx',
+                            sess_options=options,
+                            providers=['CPUExecutionProvider'])
 
-    options = ort.SessionOptions()
-    options.intra_op_num_threads = 8
-    options.inter_op_num_threads = 8
-    sess = ort.InferenceSession('onnx-facial-lmk-detector/model.onnx',
-                                sess_options=options,
-                                providers=['CPUExecutionProvider'])
+func = functools.partial(run, sess=sess)
 
-    func = functools.partial(run, sess=sess)
-    func = functools.update_wrapper(func, run)
+image_paths = load_sample_images()
+examples = [['onnx-facial-lmk-detector/input.jpg']] + [[path.as_posix()]
+                                                       for path in image_paths]
 
-    image_paths = load_sample_images()
-    examples = [['onnx-facial-lmk-detector/input.jpg']
-                ] + [[path.as_posix()] for path in image_paths]
-
-    gr.Interface(
-        func,
-        gr.inputs.Image(type='numpy', label='Input'),
-        [
-            gr.outputs.Image(type='numpy', label='Output'),
-            gr.Gallery(type='numpy', label='Aligned Faces'),
-        ],
-        examples=examples,
-        title=TITLE,
-        description=DESCRIPTION,
-        article=ARTICLE,
-        theme=args.theme,
-        allow_flagging=args.allow_flagging,
-        live=args.live,
-    ).launch(
-        enable_queue=args.enable_queue,
-        server_port=args.port,
-        share=args.share,
-    )
-
-
-if __name__ == '__main__':
-    main()
+gr.Interface(
+    fn=func,
+    inputs=gr.Image(label='Input', type='numpy'),
+    outputs=[
+        gr.Image(label='Output', type='numpy'),
+        gr.Gallery(label='Aligned Faces', type='numpy'),
+    ],
+    examples=examples,
+    title=TITLE,
+    description=DESCRIPTION,
+).queue().launch(show_api=False)
