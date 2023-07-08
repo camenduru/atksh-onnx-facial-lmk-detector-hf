@@ -4,35 +4,13 @@ from __future__ import annotations
 
 import functools
 import os
-import pathlib
-import tarfile
 
 import cv2
 import gradio as gr
-import huggingface_hub
 import numpy as np
 import onnxruntime as ort
 
-TITLE = 'atksh/onnx-facial-lmk-detector'
-DESCRIPTION = 'This is an unofficial demo for https://github.com/atksh/onnx-facial-lmk-detector.'
-
-HF_TOKEN = os.getenv('HF_TOKEN')
-
-
-def load_sample_images() -> list[pathlib.Path]:
-    image_dir = pathlib.Path('images')
-    if not image_dir.exists():
-        image_dir.mkdir()
-        dataset_repo = 'hysts/input-images'
-        filenames = ['001.tar']
-        for name in filenames:
-            path = huggingface_hub.hf_hub_download(dataset_repo,
-                                                   name,
-                                                   repo_type='dataset',
-                                                   use_auth_token=HF_TOKEN)
-            with tarfile.open(path) as f:
-                f.extractall(image_dir.as_posix())
-    return sorted(image_dir.rglob('*.jpg'))
+DESCRIPTION = '# [atksh/onnx-facial-lmk-detector](https://github.com/atksh/onnx-facial-lmk-detector)'
 
 
 def run(image: np.ndarray, sess: ort.InferenceSession) -> np.ndarray:
@@ -58,20 +36,27 @@ sess = ort.InferenceSession('onnx-facial-lmk-detector/model.onnx',
                             sess_options=options,
                             providers=['CPUExecutionProvider'])
 
-func = functools.partial(run, sess=sess)
+fn = functools.partial(run, sess=sess)
 
-image_paths = load_sample_images()
-examples = [['onnx-facial-lmk-detector/input.jpg']] + [[path.as_posix()]
-                                                       for path in image_paths]
+examples = [['onnx-facial-lmk-detector/input.jpg'],
+            ['images/pexels-ksenia-chernaya-8535230.jpg']]
 
-gr.Interface(
-    fn=func,
-    inputs=gr.Image(label='Input', type='numpy'),
-    outputs=[
-        gr.Image(label='Output', type='numpy'),
-        gr.Gallery(label='Aligned Faces', type='numpy'),
-    ],
-    examples=examples,
-    title=TITLE,
-    description=DESCRIPTION,
-).queue().launch(show_api=False)
+with gr.Blocks(css='style.css') as demo:
+    gr.Markdown(DESCRIPTION)
+    with gr.Row():
+        with gr.Column():
+            image = gr.Image(label='Input', type='numpy')
+            run_button = gr.Button()
+        with gr.Column():
+            result = gr.Image(label='Output')
+            gallery = gr.Gallery(label='Aligned Faces')
+    gr.Examples(examples=examples,
+                inputs=image,
+                outputs=[result, gallery],
+                fn=fn,
+                cache_examples=os.getenv('CACHE_EXAMPLES') == '1')
+    run_button.click(fn=fn,
+                     inputs=image,
+                     outputs=[result, gallery],
+                     api_name='run')
+demo.queue(max_size=10).launch()
